@@ -113,7 +113,27 @@ angular.module('multipleDatePicker', [])
                  * Type: any type moment can parse
                  * If filled will disable all days after this one (not included)
                  * */
-                disableDaysAfter: '=?'
+                disableDaysAfter: '=?',
+                /*
+                 * Type: boolean
+                 * if true add range selection to the calendar
+                 * */
+                dateRange: '=?',
+                /*
+                 * Type: moment date
+                 * Set the default start date for range selection
+                 */
+                rangeStart: '=?',
+                /*
+                 * Type: moment date
+                 * Set the default end date for range selection
+                 */
+                rangeEnd: '=?',
+                /*
+                 * Type: function(dates)
+                 * Will be called when new dates are selected
+                 * */
+                datesChanged: '=?'
             },
             template: '<div class="multiple-date-picker">' +
             '<div class="picker-top-row">' +
@@ -163,6 +183,36 @@ angular.module('multipleDatePicker', [])
                         });
                         scope.convertedDaysSelected = momentDates;
                         scope.generate();
+                    },
+                    generateDayCSS = function (day) {
+                        if (!day.selectable) {
+                            day.css = 'picker-off';
+                            day.title = 'picker-off';
+                        } else if (scope.dateRange && scope.dateRange.start && (scope.dateRange.start.isSame(day))) {
+                            day.css = 'range-start';
+                            day.title = 'range-start';
+                        } else if (scope.dateRange && scope.dateRange.end && (scope.dateRange.end.isSame(day))) {
+                            day.css = 'range-end';
+                            day.title = 'range-end';
+                        } else if (scope.dateRange && scope.dateRange.contains && day.within(scope.dateRange)) {
+                            day.css = 'within-range';
+                            day.title = 'within-range';
+                        } else {
+                            day.css = '';
+                            day.title = '';
+                        }
+                    },
+                    clearSelectedDates = function () {
+                        momentDate.selected = false;
+                        scope.convertedDaysSelected = [];
+                        scope.dateRange = {};
+                        scope.rangeStart = undefined;
+                        scope.rangeEnd = undefined;
+
+                        scope.days.forEach(function (day) {
+                            day.selected = false;
+                            generateDayCSS(day);
+                        });
                     };
 
                 /* broadcast functions*/
@@ -188,6 +238,30 @@ angular.module('multipleDatePicker', [])
                 }, true);
 
                 scope.$watch('allDaysOff', function () {
+                    scope.generate();
+                }, true);
+
+                scope.$watch('rangeStart', function () {
+                    if (scope.rangeStart && moment.isMoment(scope.rangeStart) && scope.rangeEnd && moment.isMoment(scope.rangeEnd)){
+                        scope.dateRange = moment.range(scope.rangeStart, scope.rangeEnd);
+                        scope.generate();
+                    }
+                }, true);
+
+                scope.$watch('rangeEnd', function () {
+                    if (scope.rangeStart && moment.isMoment(scope.rangeStart) && scope.rangeEnd && moment.isMoment(scope.rangeEnd)){
+                        scope.dateRange = moment.range(scope.rangeStart, scope.rangeEnd);
+                        scope.generate();
+                    }
+                }, true);
+
+                scope.$watch('disableDaysBefore', function () {
+                    if (scope.disableDaysBefore && scope.disableDaysBefore.isAfter(scope.rangeStart)) {
+                        scope.month = scope.disableDaysBefore;
+                        scope.dateRange = undefined;
+                        scope.rangeStart = undefined;
+                        scope.rangeEnd = undefined;
+                    }
                     scope.generate();
                 }, true);
 
@@ -227,14 +301,57 @@ angular.module('multipleDatePicker', [])
                     }
 
                     if (momentDate.selectable && !prevented) {
-                        momentDate.selected = !momentDate.selected;
-
                         if (momentDate.selected) {
+                            /*Clicking on an already selected date unselect everything*/
+                            clearSelectedDates();
+                        }
+                        else if ((!scope.rangeStart) || (scope.rangeStart && scope.rangeEnd) || (scope.rangeStart && momentDate.isBefore(scope.rangeStart))) {
+                            /*Select starting date for range selection*/
+                            clearSelectedDates();
+
+                            scope.rangeStart = momentDate;
+                            momentDate.selected = true;
                             scope.convertedDaysSelected.push(momentDate);
                         } else {
-                            scope.convertedDaysSelected = scope.convertedDaysSelected.filter(function (date) {
-                                return date.valueOf() !== momentDate.valueOf();
+                            /*Select ending date for range selection*/
+                            scope.rangeEnd = momentDate;
+                            momentDate.selected = true;
+                            scope.convertedDaysSelected.push(momentDate);
+                            scope.dateRange = moment.range(scope.rangeStart, scope.rangeEnd);
+
+                            scope.days.forEach(function (day) {
+                                /*    if (!day.selectable) {
+                                 day.css = 'picker-off';
+                                 day.title = 'picker-off';
+                                 } else if (scope.dateRange && scope.dateRange.start && (scope.dateRange.start.isSame(day))) {
+                                 day.css = 'range-start';
+                                 day.title = 'range-start';
+                                 } else if (scope.dateRange && scope.dateRange.end && (scope.dateRange.end.isSame(day))) {
+                                 day.css = 'range-end';
+                                 day.title = 'range-end';
+                                 } else */
+                                generateDayCSS(day);
+                                if (scope.dateRange && scope.dateRange.contains && day.within(scope.dateRange)) {
+                                    // day.css = 'within-range';
+                                    // day.title = 'within-range';
+
+                                    /*The date is within the selected range, add it to the selected list*/
+                                    var index = scope.convertedDaysSelected.indexOf(day);
+                                    if (index === -1) {
+                                        scope.convertedDaysSelected.push(day);
+                                    }
+                                }
+                                // } else {
+                                //     day.css = '';
+                                //     day.title = '';
+                                // }
                             });
+
+                        }
+
+                        /*Notify dates change*/
+                        if (typeof scope.datesChanged == 'function') {
+                            scope.datesChanged(scope.convertedDaysSelected);
                         }
                     }
                 };
@@ -310,6 +427,10 @@ angular.module('multipleDatePicker', [])
 
                 /*Generate the calendar*/
                 scope.generate = function () {
+                    if (!scope.dateRange && scope.rangeStart && scope.rangeEnd) {
+                        scope.dateRange = moment.range(scope.rangeStart, scope.rangeEnd);
+                    }
+
                     var previousDay = moment(scope.month).date(0).day(scope.sundayFirstDay ? 0 : 1).subtract(1, 'day');
 
                     if (moment(scope.month).date(0).diff(previousDay, 'day') > 6) {
@@ -337,6 +458,24 @@ angular.module('multipleDatePicker', [])
                             if (!date.isSame(scope.month, 'month')) {
                                 date.otherMonth = true;
                             }
+
+                            generateDayCSS(date);
+                            // if (!date.selectable) {
+                            //     date.css = 'picker-off';
+                            //     date.title = 'picker-off';
+                            // } else if (scope.dateRange && scope.dateRange.start && moment.isMoment(scope.dateRange.start) && (scope.dateRange.start.isSame(date))) {
+                            //     date.css = 'range-start';
+                            //     date.title = 'range-start';
+                            // } else if (scope.dateRange && scope.dateRange.end && moment.isMoment(scope.dateRange.end) && (scope.dateRange.end.isSame(date))) {
+                            //     date.css = 'range-end';
+                            //     date.title = 'range-end';
+                            // } else if (scope.dateRange && scope.dateRange.contains && date.within(scope.dateRange)) {
+                            //     date.css = 'within-range';
+                            //     date.title = 'within-range';
+                            // } else {
+                            //     date.css = '';
+                            //     date.title = '';
+                            // }
                             return date;
                         },
                         maxDays = lastDay.diff(previousDay, 'days'),
