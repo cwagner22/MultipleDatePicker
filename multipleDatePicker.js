@@ -203,7 +203,6 @@ angular.module('multipleDatePicker', [])
                         }
                     },
                     clearSelectedDates = function () {
-                        momentDate.selected = false;
                         scope.convertedDaysSelected = [];
                         scope.dateRange = {};
                         scope.rangeStart = undefined;
@@ -304,6 +303,7 @@ angular.module('multipleDatePicker', [])
                         if (momentDate.selected) {
                             /*Clicking on an already selected date unselect everything*/
                             clearSelectedDates();
+                            momentDate.selected = false;
                         }
                         else if ((!scope.rangeStart) || (scope.rangeStart && scope.rangeEnd) || (scope.rangeStart && momentDate.isBefore(scope.rangeStart))) {
                             /*Select starting date for range selection*/
@@ -320,31 +320,14 @@ angular.module('multipleDatePicker', [])
                             scope.dateRange = moment.range(scope.rangeStart, scope.rangeEnd);
 
                             scope.days.forEach(function (day) {
-                                /*    if (!day.selectable) {
-                                 day.css = 'picker-off';
-                                 day.title = 'picker-off';
-                                 } else if (scope.dateRange && scope.dateRange.start && (scope.dateRange.start.isSame(day))) {
-                                 day.css = 'range-start';
-                                 day.title = 'range-start';
-                                 } else if (scope.dateRange && scope.dateRange.end && (scope.dateRange.end.isSame(day))) {
-                                 day.css = 'range-end';
-                                 day.title = 'range-end';
-                                 } else */
                                 generateDayCSS(day);
                                 if (scope.dateRange && scope.dateRange.contains && day.within(scope.dateRange)) {
-                                    // day.css = 'within-range';
-                                    // day.title = 'within-range';
-
                                     /*The date is within the selected range, add it to the selected list*/
                                     var index = scope.convertedDaysSelected.indexOf(day);
                                     if (index === -1) {
                                         scope.convertedDaysSelected.push(day);
                                     }
                                 }
-                                // } else {
-                                //     day.css = '';
-                                //     day.title = '';
-                                // }
                             });
 
                         }
@@ -460,22 +443,6 @@ angular.module('multipleDatePicker', [])
                             }
 
                             generateDayCSS(date);
-                            // if (!date.selectable) {
-                            //     date.css = 'picker-off';
-                            //     date.title = 'picker-off';
-                            // } else if (scope.dateRange && scope.dateRange.start && moment.isMoment(scope.dateRange.start) && (scope.dateRange.start.isSame(date))) {
-                            //     date.css = 'range-start';
-                            //     date.title = 'range-start';
-                            // } else if (scope.dateRange && scope.dateRange.end && moment.isMoment(scope.dateRange.end) && (scope.dateRange.end.isSame(date))) {
-                            //     date.css = 'range-end';
-                            //     date.title = 'range-end';
-                            // } else if (scope.dateRange && scope.dateRange.contains && date.within(scope.dateRange)) {
-                            //     date.css = 'within-range';
-                            //     date.title = 'within-range';
-                            // } else {
-                            //     date.css = '';
-                            //     date.title = '';
-                            // }
                             return date;
                         },
                         maxDays = lastDay.diff(previousDay, 'days'),
