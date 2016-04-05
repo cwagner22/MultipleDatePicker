@@ -212,6 +212,11 @@ angular.module('multipleDatePicker', [])
                             day.selected = false;
                             generateDayCSS(day);
                         });
+                    },
+                    notifyDatesChanged = function () {
+                        if (typeof scope.datesChanged == 'function') {
+                            scope.datesChanged(scope.convertedDaysSelected);
+                        }
                     };
 
                 /* broadcast functions*/
@@ -255,7 +260,7 @@ angular.module('multipleDatePicker', [])
                 }, true);
 
                 scope.$watch('disableDaysBefore', function () {
-                    if (scope.disableDaysBefore && scope.disableDaysBefore.isAfter(scope.rangeStart)) {
+                    if (scope.disableDaysBefore && moment.isMoment(scope.disableDaysBefore) && scope.disableDaysBefore.isAfter(scope.rangeStart)) {
                         scope.month = scope.disableDaysBefore;
                         scope.dateRange = undefined;
                         scope.rangeStart = undefined;
@@ -332,10 +337,7 @@ angular.module('multipleDatePicker', [])
 
                         }
 
-                        /*Notify dates change*/
-                        if (typeof scope.datesChanged == 'function') {
-                            scope.datesChanged(scope.convertedDaysSelected);
-                        }
+                        notifyDatesChanged();
                     }
                 };
 
